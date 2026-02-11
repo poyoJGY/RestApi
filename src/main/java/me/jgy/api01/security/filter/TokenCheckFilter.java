@@ -12,6 +12,9 @@ import lombok.extern.log4j.Log4j2;
 import me.jgy.api01.security.APIUserDetailsService;
 import me.jgy.api01.security.exception.AccessTokenException;
 import me.jgy.api01.util.JWTUtil;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -38,7 +41,20 @@ public class TokenCheckFilter extends OncePerRequestFilter {
         log.info("JWTUtil: " + jwtUtil);
 
         try {
-            validateAccessToken(request);
+            Map<String, Object> payload = validateAccessToken(request);
+
+            // mid
+            String mid = (String) payload.get("mid");
+
+            log.info("mid: " + mid);
+
+            UserDetails userDetails = apiUserDetailsService.loadUserByUsername(mid);
+
+            UsernamePasswordAuthenticationToken authenticationToken =
+                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+
+            SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+
             filterChain.doFilter(request, response);
         } catch (AccessTokenException accessTokenException) {
             accessTokenException.sendResponseError(response);
